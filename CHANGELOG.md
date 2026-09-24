@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.2 — 2026-09-24
+
+- **The engine's severity word is pinned in the request.** In a live DmarcWatch test the free-tier model called an `info` finding "low-severity". For `hexward.explain_finding` the client now repeats the exact severity right before the answer, and tells the model never to call it higher or lower.
+
 ## 0.2.1 — 2026-09-24
 
 - **Grounding rule tightened: no arithmetic on evidence values.** In a live CertLight test, the free-tier SmolLM3 turned "expired 4182 days ago" into "11 years and 2 days". That is a derived value the evidence does not contain, and it is wrong. The system prompt now forbids calculating, converting, rounding or re-expressing numbers and dates; the model has to quote them as given.
