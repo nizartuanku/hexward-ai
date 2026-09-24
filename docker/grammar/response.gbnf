@@ -1,0 +1,39 @@
+# response.gbnf — grammar-constrains hexward-ai's output to exactly the
+# JSON shape internal/aiclient.Explanation expects (see spec §4):
+#
+#   {"explanation": "...", "what_to_verify": ["...", "..."], "disclaimer": "..."}
+#
+# This is loaded by llama.cpp's server via --grammar-file, or passed
+# per-request in the "grammar" field of /v1/chat/completions (the field
+# internal/aiclient.WithGrammar attaches). It is enforced ENTIRELY inside
+# llama.cpp's own token sampler — hexward-ai does not post-process or
+# retry model output to "fix" invalid JSON, because a grammar that
+# actually constrains sampling never produces invalid JSON to fix.
+#
+# What this grammar guarantees: syntactically valid JSON in the required
+# shape, with the three required keys present, in this order, with
+# "what_to_verify" always an array of strings (possibly empty).
+#
+# What this grammar does NOT guarantee, and cannot: that the content of
+# "explanation" only restates facts from the evidence packet. That is a
+# prompting/instruction-following concern (see the system prompt in
+# internal/aiclient/client.go and spec §7), not a grammar concern — a
+# grammar constrains shape, never truthfulness. Two independent layers
+# exist because of this: the grammar makes the JSON parseable, the prompt
+# tries to make the content grounded, and internal/aiclient's client
+# additionally overwrites the "disclaimer" field itself rather than
+# trusting the model to have copied it correctly.
+
+root ::= ws "{" ws
+  "\"explanation\"" ws ":" ws string ws ","  ws
+  "\"what_to_verify\"" ws ":" ws string-array ws "," ws
+  "\"disclaimer\"" ws ":" ws string ws
+  "}" ws
+
+string-array ::= "[" ws "]" | "[" ws string ("," ws string)* ws "]"
+
+string ::= "\"" char* "\""
+char ::= [^"\\\x00-\x1F] | "\\" (["\\/bfnrt] | "u" hex hex hex hex)
+hex ::= [0-9a-fA-F]
+
+ws ::= [ \t\n\r]*

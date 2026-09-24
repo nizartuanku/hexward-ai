@@ -1,0 +1,13 @@
+# Changelog
+
+## Unreleased
+
+- First scaffolding of `hexward-ai`: the shared, optional AI Assist sidecar for the Hexward product line (kiriman #16, R&D → Dapur Engineering).
+- `internal/aiclient` — the Go client every pilot product copies into its own repo: an OpenAI-compatible `/v1/chat/completions` caller, typed `EvidencePacket`/`Explanation` structs for both Phase 1 pilot features, timeouts, bounded retries on transport errors and HTTP 5xx only (never on 4xx or malformed JSON), and a hard client-side override of the `disclaimer` field to the canonical sentence regardless of what the model returned. Ships with `httptest`-based unit tests covering the happy path, an unreachable sidecar, retry exhaustion, non-retryable 4xx, malformed JSON at both the transport and model-content layers, and context cancellation. `go test -race ./...` is green.
+- `docker/Dockerfile` + `docker/entrypoint.sh` — wraps the upstream `ghcr.io/ggml-org/llama.cpp:server` image (pinned by tag and digest, not forked) with Hexward's GBNF grammar and prompt templates. The model is never baked into the image; the entrypoint fails with a clear message if no model is mounted, unless a lab-only Hugging Face auto-download is explicitly opted into.
+- `docker/grammar/response.gbnf` — grammar-constrains every response to the exact JSON shape `internal/aiclient.Explanation` expects.
+- `docker/prompts/*.tmpl` — the canonical, versioned wording for both Phase 1 pilot features (RuleHawk "explain this finding", AuditLight/Posture Report "why did this finding disappear").
+- `docker-compose.ai.yml` — GitHub-lab compose file, auto-downloads the free-tier model (SmolLM3-3B, Apache-2.0) from Hugging Face on first start.
+- `examples/rulehawk-explain-finding`, `examples/auditlight-why-disappeared` — runnable stubs showing exactly how each pilot product would call `internal/aiclient` once it is copied into that product's own repo.
+- `docs/CONCEPTS.md`, `docs/INSTALL.md`, `docs/USER-GUIDE.md`, `scripts/first-run.sh` (pre-release manual-run form — no tagged release exists yet).
+- **Known incomplete, deliberately not claimed as done:** live inference (an actual model answering an actual evidence packet) has not been run in this session — see README "What is not done yet" for the exact reason and the follow-up job this leaves for Dapur Engineering. The full CI grounding gate from spec §10 (send a canned packet to a running sidecar, assert grammar-valid JSON and no invented tokens, assert no panic when the sidecar is killed mid-request) is not implemented — CI currently only builds the Docker image, it does not run it against a model.

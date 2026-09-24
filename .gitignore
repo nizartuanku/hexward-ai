@@ -1,0 +1,18 @@
+# Build artifacts (compiled examples, local binaries)
+/hexward-ai
+/rulehawk-explain-finding
+/auditlight-why-disappeared
+*.exe
+*.test
+
+# Model weights — never committed; downloaded separately per docs/INSTALL.md
+*.gguf
+/models/
+
+# Local dev/test scratch
+/tmp/
+*.log
+
+# OS/editor noise
+.DS_Store
+*.swp

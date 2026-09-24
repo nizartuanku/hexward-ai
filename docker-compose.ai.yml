@@ -1,0 +1,60 @@
+# docker-compose.ai.yml — GitHub-lab compose file for hexward-ai (spec §10).
+#
+# Brings up the sidecar with the free-tier model (SmolLM3-3B, Apache-2.0),
+# downloaded and checksum-cached by llama.cpp itself on first start via
+# --hf-repo (see docker/entrypoint.sh) — this is the "auto-downloading
+# SmolLM3-3B (checksum verified)" lab path spec §10 describes: llama.cpp
+# verifies the file it pulls from Hugging Face against the repo's own
+# published hash before it will load it, the same discipline every
+# Hexward product release already applies to its own binaries.
+#
+# This file is for local dev/testing only. It deliberately bypasses
+# license gating entirely (spec §6: "the lab compose file bypasses gating
+# entirely — local dev/test only, not a licensed capability") — there is
+# no license flag here to bypass, because hexward-ai itself never checks
+# a license; gating happens in the calling product, which simply chooses
+# whether to call this sidecar at all.
+#
+# Usage:
+#   docker compose -f docker-compose.ai.yml up
+#   # first start downloads ~2 GB from Hugging Face — see logs
+#   curl http://127.0.0.1:8435/health
+#
+# A pilot product's own compose file should instead mount a pre-downloaded
+# model (see docs/INSTALL.md "SMB / Enterprise tiers") and omit
+# HEXWARD_AI_HF_REPO so no network call is made at request time or start
+# time — that is the offline-by-default configuration this file is not.
+
+services:
+  hexward-ai:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: hexward/hexward-ai:0.1.0
+    container_name: hexward-ai-lab
+    ports:
+      - "127.0.0.1:8435:8435"
+    environment:
+      HEXWARD_AI_HOST: "0.0.0.0"
+      HEXWARD_AI_PORT: "8435"
+      HEXWARD_AI_CTX_SIZE: "4096"
+      # Lab-only convenience: downloads from Hugging Face on first start
+      # if /models/model.gguf is not already present in the volume below.
+      # Unset both of these (and pre-populate the volume, or bind-mount a
+      # file) for any deployment that must not reach the internet.
+      HEXWARD_AI_HF_REPO: "ggml-org/SmolLM3-3B-GGUF"
+      HEXWARD_AI_HF_FILE: "SmolLM3-Q4_K_M.gguf"
+    volumes:
+      # Named volume, not the image layer: the ~2 GB model persists across
+      # `docker compose down` / `up` so it is not re-downloaded every time.
+      - hexward-ai-models:/models
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:8435/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 600s # first-run model download + load can take minutes on CPU
+    restart: unless-stopped
+
+volumes:
+  hexward-ai-models:
