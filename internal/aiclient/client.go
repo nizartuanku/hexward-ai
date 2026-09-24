@@ -254,16 +254,26 @@ func languageInstruction(lang string) string {
 // finding "low-severity"; repeating the exact word right before the
 // answer is the cheapest reliable guard. Other features return "".
 func severityInstruction(evidence EvidencePacket) string {
+	sev := findingSeverity(evidence)
+	if sev == "" {
+		return ""
+	}
+	return fmt.Sprintf("The engine rated this finding %q. If you mention severity, use exactly that word; never call it higher or lower. ", sev)
+}
+
+// findingSeverity returns the engine's severity for generic-feature
+// packets, or "" for anything else.
+func findingSeverity(evidence EvidencePacket) string {
 	if evidence.Feature != FeatureExplainFinding {
 		return ""
 	}
 	var f struct {
 		Severity string `json:"severity"`
 	}
-	if json.Unmarshal(evidence.Finding, &f) != nil || strings.TrimSpace(f.Severity) == "" {
+	if json.Unmarshal(evidence.Finding, &f) != nil {
 		return ""
 	}
-	return fmt.Sprintf("The engine rated this finding %q. If you mention severity, use exactly that word; never call it higher or lower. ", f.Severity)
+	return strings.TrimSpace(f.Severity)
 }
 
 // chatMessage mirrors the OpenAI chat-completions message shape.
@@ -361,6 +371,9 @@ func (c *Client) Explain(ctx context.Context, evidence EvidencePacket) (*Explana
 
 		exp, err := c.doRequest(ctx, reqBody)
 		if err == nil {
+			if sev := findingSeverity(evidence); sev != "" {
+				exp.ExplanationText = dropConflictingSeverity(exp.ExplanationText, sev)
+			}
 			exp.Disclaimer = CanonicalDisclaimer
 			return exp, nil
 		}
