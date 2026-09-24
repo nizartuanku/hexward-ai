@@ -234,6 +234,45 @@ func TestExplain_ValidatesEvidencePacket(t *testing.T) {
 	}
 }
 
+func TestExplain_DefaultMaxTokensIsSent(t *testing.T) {
+	// Regression test for a real bug found by testing this client against
+	// a live sidecar: with no cap, a slow CPU-bound model can generate
+	// past the caller's own timeout even though the grammar guarantees
+	// it eventually stops. New must set a non-zero default so this never
+	// silently regresses to "unbounded" again.
+	var gotBody chatCompletionRequest
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewDecoder(r.Body).Decode(&gotBody)
+		w.Write(chatCompletionFixture(t, Explanation{ExplanationText: "ok"}))
+	}))
+	defer srv.Close()
+
+	c := New(srv.URL)
+	if _, err := c.Explain(context.Background(), validEvidence()); err != nil {
+		t.Fatalf("Explain returned error: %v", err)
+	}
+	if gotBody.MaxTokens <= 0 {
+		t.Errorf("MaxTokens = %d, want a positive default", gotBody.MaxTokens)
+	}
+}
+
+func TestExplain_WithMaxTokensOverride(t *testing.T) {
+	var gotBody chatCompletionRequest
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewDecoder(r.Body).Decode(&gotBody)
+		w.Write(chatCompletionFixture(t, Explanation{ExplanationText: "ok"}))
+	}))
+	defer srv.Close()
+
+	c := New(srv.URL, WithMaxTokens(64))
+	if _, err := c.Explain(context.Background(), validEvidence()); err != nil {
+		t.Fatalf("Explain returned error: %v", err)
+	}
+	if gotBody.MaxTokens != 64 {
+		t.Errorf("MaxTokens = %d, want 64 (from WithMaxTokens)", gotBody.MaxTokens)
+	}
+}
+
 func TestExplain_ContextCanceled(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(50 * time.Millisecond)

@@ -134,12 +134,24 @@ fi
 # ------------------------------------------------------ 6. one real request (FULL mode only)
 step 6 "send one evidence packet through the model"
 if [ -n "$MODEL_PATH" ]; then
-  RESP=$(curl -s --max-time 60 "http://127.0.0.1:${PORT}/v1/chat/completions" \
+  # CPU inference under a grammar is slow (observed ~1 token/second for
+  # SmolLM3-3B on the team's own DevNet VM) — max_tokens and --max-time
+  # are both generous on purpose. This curl call is deliberately NOT a
+  # bare `RESP=$(curl ...)`: under `set -e`, a plain command-substitution
+  # assignment that fails (e.g. curl exiting 28 on --max-time) aborts the
+  # whole script immediately, silently, without ever reaching fail() —
+  # verified directly while building this script (a real request that
+  # ran past --max-time killed the script with no error message at all).
+  # The explicit `if ! RESP=$(...)` form is what makes curl's own
+  # failure reach the same fail() path as every other check here.
+  if ! RESP=$(curl -s --max-time 180 "http://127.0.0.1:${PORT}/v1/chat/completions" \
     -H "Content-Type: application/json" \
     --data-binary @- <<'JSON'
-{"model":"hexward-ai","messages":[{"role":"system","content":"Respond with a single JSON object: {\"explanation\": string, \"what_to_verify\": [string], \"disclaimer\": string}."},{"role":"user","content":"{\"feature\":\"rulehawk.explain_finding\",\"product\":\"rulehawk\",\"finding\":{\"id\":\"f-0142\",\"kind\":\"rule.shadowed\"}}"}],"temperature":0.2}
+{"model":"hexward-ai","messages":[{"role":"system","content":"Respond with a single JSON object: {\"explanation\": string, \"what_to_verify\": [string], \"disclaimer\": string}."},{"role":"user","content":"{\"feature\":\"rulehawk.explain_finding\",\"product\":\"rulehawk\",\"finding\":{\"id\":\"f-0142\",\"kind\":\"rule.shadowed\"}}"}],"temperature":0.2,"max_tokens":150}
 JSON
-  )
+  ); then
+    fail "the /v1/chat/completions request failed or did not complete within 180s"
+  fi
   echo "$RESP" | python3 -c "
 import json, sys
 data = json.load(sys.stdin)

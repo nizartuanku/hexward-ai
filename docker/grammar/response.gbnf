@@ -24,11 +24,19 @@
 # additionally overwrites the "disclaimer" field itself rather than
 # trusting the model to have copied it correctly.
 
-root ::= ws "{" ws
-  "\"explanation\"" ws ":" ws string ws ","  ws
+# The whole key/value sequence is wrapped in one explicit group. This is
+# not a style choice: llama.cpp's GBNF parser only allows a rule
+# definition to continue across a line break inside an explicit "(...)"
+# group (exactly how every multi-line rule in llama.cpp's own sample
+# grammars is written) — a bare top-level sequence split across lines
+# with no enclosing group fails with "expecting name at ...", verified
+# directly against the real parser (ghcr.io/ggml-org/llama.cpp:server)
+# while building this file, not assumed from documentation.
+root ::= ws "{" ws (
+  "\"explanation\"" ws ":" ws string ws "," ws
   "\"what_to_verify\"" ws ":" ws string-array ws "," ws
   "\"disclaimer\"" ws ":" ws string ws
-  "}" ws
+) "}" ws
 
 string-array ::= "[" ws "]" | "[" ws string ("," ws string)* ws "]"
 

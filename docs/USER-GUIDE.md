@@ -103,7 +103,8 @@ product's decision about whether to call `Explain` at all.
 - The output is generated text. It can be wrong even though the grammar makes it syntactically
   valid JSON. It summarizes and lists what to check; it does not replace the underlying
   finding, and it is never the only thing you should read before acting.
-- **This session did not run a live model.** Everything in this repo that does not require
-  downloading ~2 GB of weights has been built and tested (the Go client, the grammar file, the
-  Dockerfile builds); a real end-to-end request through an actual running model has not been
-  exercised — see the README's "What is not done yet".
+- **A live model WAS run in this session** (SmolLM3-3B, free tier) and answered a real request
+  end to end through the built Docker image and the real `internal/aiclient` Go client — see
+  the README's "What was verified end to end". On this VM's CPU, generation ran at roughly
+  1 token/second; plan for that on CPU-only hosts, and see `internal/aiclient.WithMaxTokens`
+  for the cap that keeps a slow response from outliving a caller's timeout.

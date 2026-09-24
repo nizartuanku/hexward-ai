@@ -41,10 +41,12 @@ Wait for a log line like `main: server is listening on http://0.0.0.0:8435`, the
 curl -s http://127.0.0.1:8435/health
 ```
 
-**Honest limit on this step:** this session built and unit-tested everything above the model
-itself, but did **not** download the ~2 GB weights or run a live inference request end to end
-— see the README's "What is not done yet" for the exact reason (time/network budget for this
-session) and the follow-up job this leaves.
+**Verified in this session:** the ~1.9 GB `SmolLM3-Q4_K_M.gguf` was downloaded, its sha256
+matched Hugging Face's own published hash exactly, the container loaded it, `/health` answered
+200, and a real `/v1/chat/completions` request returned a real, grammar-valid response — see
+the README's "What was verified end to end" for the exact evidence and two real bugs that
+testing found and fixed (a `WORKDIR` issue and a grammar syntax error). Generation speed on
+that VM's CPU was roughly 1 token/second — set expectations accordingly for CPU-only hosts.
 
 ## 4. Offline / production: mount a pre-downloaded model yourself
 

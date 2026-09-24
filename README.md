@@ -16,9 +16,9 @@ this sidecar uses and why one alone is not enough.
 
 ## Status
 
-**Early scaffolding — not yet wired into any product's UI, and not yet run against a live
-model in this session.** See "What is done" and "What is not done yet" below before deciding
-whether to depend on this. There is no tagged release; everything here is built from `main`.
+**Early scaffolding, but a real one — the sidecar has been built, downloaded a real model, and
+answered a real request end to end (see "What was verified end to end" below).** It is not yet
+wired into any product's UI. There is no tagged release; everything here is built from `main`.
 
 ## What this is not
 
@@ -153,35 +153,82 @@ either one against a live sidecar with `go run ./examples/<name>`.
 ## What is done (with evidence, not claims)
 
 - `internal/aiclient`: real Go package, builds, `gofmt -l .` empty, `go vet ./...` clean,
-  `go test -race ./...` green (9 test functions, including subtests).
+  `go test -race ./...` green (11 test functions, including subtests).
 - `docker/Dockerfile` builds successfully on the team's own Ubuntu 24.04 DevNet VM, on top of
-  the real, published `ghcr.io/ggml-org/llama.cpp:server` image (pinned by digest).
-- `docker/grammar/response.gbnf`, `docker/prompts/*.tmpl`, `docker-compose.ai.yml`: written
-  against real, verified llama.cpp server flags (`--grammar-file`, `--hf-repo`, `--hf-file`,
-  `--host`, `--port`) and a real, verified Hugging Face GGUF repo (`ggml-org/SmolLM3-3B-GGUF`,
-  file `SmolLM3-Q4_K_M.gguf`).
+  the real, published `ghcr.io/ggml-org/llama.cpp:server` image (pinned by digest), **and the
+  resulting container was actually run, loaded a real 1.9 GB model (checksum-verified against
+  Hugging Face's own published `sha256`), answered `/health` with 200, and returned a real,
+  grammar-valid response to a real chat-completions request** — see "What was verified end to
+  end" below.
+- `docker/grammar/response.gbnf` parses successfully against the real llama.cpp grammar parser
+  (this took two real fixes to get right — see below) and its constrained output was observed
+  matching the required schema on a live model, not just inspected for syntax.
+- `docker-compose.ai.yml`: the `--hf-repo`/`--hf-file` values point at the exact Hugging Face
+  repo and file this session downloaded and ran (`ggml-org/SmolLM3-3B-GGUF`,
+  `SmolLM3-Q4_K_M.gguf`), not merely a plausible-looking name.
+
+## What was verified end to end (with real evidence)
+
+This session downloaded the free-tier model and ran it for real, twice — once with a raw
+`curl` request, once through the actual `internal/aiclient` Go client — both against the image
+this repo builds, on the team's own DevNet VM:
+
+```
+curl http://127.0.0.1:8436/v1/chat/completions ...
+HTTPCODE:200
+{"choices":[{"finish_reason":"stop","message":{"content":
+  "{\"explanation\": \"...\", \"what_to_verify\": [...], \"disclaimer\": \"...\"}"
+}}], "usage":{"completion_tokens":88,"prompt_tokens":103}, ...}
+```
+
+and, separately, `go run ./examples/auditlight-why-disappeared -sidecar http://127.0.0.1:8437`
+against the same live model returned a real explanation and the exact canonical disclaimer,
+client-enforced.
+
+Two real bugs surfaced by this and were fixed in the same session, not just noted:
+
+1. **The Dockerfile's `WORKDIR` broke the base image.** `ghcr.io/ggml-org/llama.cpp:server`'s
+   `llama-server` binary resolves its own shared libraries via a CWD-relative path, not
+   `$ORIGIN` — setting `WORKDIR` to anything other than `/app` made the container exit
+   immediately with `error while loading shared libraries: libllama-server-impl.so`. Fixed by
+   keeping `WORKDIR /app`.
+2. **The GBNF grammar failed to parse.** llama.cpp's grammar parser only allows a rule
+   definition to span multiple lines inside an explicit `(...)` group — my `root` rule split a
+   bare top-level sequence across lines with no enclosing group, which fails with `expecting
+   name at ...`. Fixed by wrapping the sequence in one group, matching how every multi-line
+   rule in llama.cpp's own sample grammars is written.
+3. **`internal/aiclient` sent no `max_tokens`.** On this VM's CPU, SmolLM3-3B generated at
+   roughly 1 token/second under the grammar; an uncapped response ran past a 150s client
+   timeout even though the grammar guarantees it eventually stops. Fixed by adding a
+   `defaultMaxTokens` (512) and a `WithMaxTokens` override — covered by two new regression
+   tests in `internal/aiclient/client_test.go`.
+
+All three were found by actually running the thing, not by inspection — which is the reason
+this session budgeted the ~2 GB download instead of stopping at "the code compiles."
 
 ## What is not done yet
 
 Named honestly so the next session (or the next engineer) does not have to rediscover it:
 
-1. **Live inference has not been exercised end to end.** Downloading the ~2 GB SmolLM3-3B
-   weights and sending a real evidence packet through a real running model was out of this
-   session's time/network budget. Everything that does not require the weights themselves —
-   the client, the grammar file's syntax, the Dockerfile build — has been built and tested;
-   whether the *served* JSON actually satisfies the grammar and stays grounded in practice has
-   not been verified against a live model. **This is the natural next job.**
-2. **Not wired into RuleHawk's or AuditLight's real UI.** `examples/` shows the calling pattern
-   with a hand-built sample finding; neither product's dashboard calls `internal/aiclient` yet.
-3. **The full CI grounding gate from spec §10 is not implemented.** CI currently builds the
+1. **Not wired into RuleHawk's or AuditLight's real UI.** `examples/` shows the calling pattern
+   with a hand-built sample finding, verified against a live sidecar; neither product's
+   dashboard calls `internal/aiclient` yet.
+2. **The full CI grounding gate from spec §10 is not implemented.** CI currently builds the
    Docker image (`docker build`) as a compile-time check; it does not yet bring up a model and
    assert (a) grammar-valid JSON, (b) no invented token, (c) no panic when the sidecar is
-   killed mid-request. This needs a decision about where a ~2 GB model download fits in CI
-   budget before it can be built responsibly.
-4. **Phi-4-mini-instruct and Qwen3 have not been downloaded, run, or benchmarked.** Only the
-   free-tier SmolLM3-3B path has real (address-verified) source references; the SMB and
-   Enterprise rows in the model table above are the spec's stated choice, not something this
-   session measured.
+   killed mid-request. This needs a decision about where a ~2 GB model download and ~90s of
+   CPU inference fits in CI budget before it can be built responsibly.
+3. **Phi-4-mini-instruct and Qwen3 have not been downloaded, run, or benchmarked.** Only the
+   free-tier SmolLM3-3B path has been run end to end; the SMB and Enterprise rows in the model
+   table above are the spec's stated choice, not something this session measured. SmolLM3-3B's
+   own generation speed on this VM (~1 tok/s, CPU-only, no GPU) is also worth noting as a real
+   number, not a footnote: a product surfacing this narration to a user needs either a faster
+   host, a GPU, or a visible "thinking" state in the UI — instant response is not realistic on
+   commodity CPU hardware with this class of model.
+4. **The naive grounding check (spec §10.b: "no token outside the evidence packet appears in
+   the response") has not been automated.** The one real response captured above was read by a
+   human, not checked by a script, for whether it stayed grounded — building that check is part
+   of the CI gate work in point 2.
 
 ## Licensing
 

@@ -21,6 +21,15 @@ const (
 	defaultRetryBackoff = 400 * time.Millisecond
 	defaultModel        = "hexward-ai"
 
+	// defaultMaxTokens bounds a single response. Found necessary by
+	// testing against a real sidecar (SmolLM3-3B, CPU inference): with
+	// no cap, a slow model generating a long "explanation" string can
+	// run past a caller's own timeout even though the grammar guarantees
+	// it will eventually stop — "eventually" on an unloaded CPU can be
+	// well over a minute. A pilot narration answer does not need more
+	// than a few hundred tokens.
+	defaultMaxTokens = 512
+
 	// DefaultBaseURL matches the registered port from spec §3/[K-3]:
 	// TCP 127.0.0.1:8435, the slot after TopoLight's 8433/8434.
 	DefaultBaseURL = "http://127.0.0.1:8435"
@@ -66,6 +75,7 @@ type Client struct {
 	maxRetries   int
 	retryBackoff time.Duration
 	grammar      string
+	maxTokens    int
 }
 
 // Option configures a Client constructed with New.
@@ -139,6 +149,20 @@ func WithGrammar(gbnf string) Option {
 	return func(c *Client) { c.grammar = gbnf }
 }
 
+// WithMaxTokens bounds how many tokens a single response may generate
+// (sent as the OpenAI-standard "max_tokens" field). 0 (the zero value
+// passed explicitly) is rejected by New in favor of defaultMaxTokens —
+// there is no supported way to request unbounded generation, because an
+// uncapped response on a slow CPU host can outlast any reasonable
+// caller timeout while the grammar is still perfectly satisfied.
+func WithMaxTokens(n int) Option {
+	return func(c *Client) {
+		if n > 0 {
+			c.maxTokens = n
+		}
+	}
+}
+
 // New creates a Client for the sidecar at baseURL (normally
 // DefaultBaseURL). It never fails and never dials — no connection is
 // attempted until Explain is called, so constructing a Client when the
@@ -154,6 +178,7 @@ func New(baseURL string, opts ...Option) *Client {
 		timeout:      defaultTimeout,
 		maxRetries:   defaultMaxRetries,
 		retryBackoff: defaultRetryBackoff,
+		maxTokens:    defaultMaxTokens,
 	}
 	for _, opt := range opts {
 		opt(c)
@@ -192,6 +217,7 @@ type chatCompletionRequest struct {
 	Messages    []chatMessage `json:"messages"`
 	Temperature float64       `json:"temperature"`
 	Grammar     string        `json:"grammar,omitempty"`
+	MaxTokens   int           `json:"max_tokens,omitempty"`
 }
 
 // chatCompletionResponse mirrors the subset of the OpenAI response shape
@@ -247,6 +273,7 @@ func (c *Client) Explain(ctx context.Context, evidence EvidencePacket) (*Explana
 		// grounding rule above.
 		Temperature: 0.2,
 		Grammar:     c.grammar,
+		MaxTokens:   c.maxTokens,
 	}
 
 	var lastErr error

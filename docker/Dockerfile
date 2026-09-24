@@ -36,7 +36,14 @@ RUN chmod +x /opt/hexward-ai/entrypoint.sh && \
     chown -R hexward-ai:hexward-ai /models /opt/hexward-ai
 
 USER hexward-ai
-WORKDIR /opt/hexward-ai
+# The base image's llama-server binary resolves its own shared
+# libraries via a CWD-relative rpath, NOT $ORIGIN (verified directly:
+# ldd reports "not found" for libllama-server-impl.so from any other
+# working directory, even though the file exists and is world-readable
+# at /app). So WORKDIR must stay /app, not a hexward-ai-specific path,
+# or the container exits immediately with "error while loading shared
+# libraries" — this is not cosmetic.
+WORKDIR /app
 
 # 8435 — the registered Hexward port for AI Assist (spec [K-3]), the slot
 # after TopoLight's 8433/8434. Never 8422-8434 (already taken by other
