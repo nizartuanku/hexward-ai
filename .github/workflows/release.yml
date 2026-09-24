@@ -1,0 +1,53 @@
+# Publishes a GitHub release for a v* tag.
+#
+# hexward-ai ships as source + a Dockerfile (the model is never bundled), so the
+# release carries no binaries: it records the tag, this version's CHANGELOG
+# section, and the verified tier profiles plus the fetch script as assets so a
+# first user can pull exactly the pinned model without cloning the repo.
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Test
+        run: go vet ./... && go test -race -count=1 ./...
+      - name: Build the sidecar image (compile check, not pushed)
+        run: docker build -t hexward/hexward-ai:${GITHUB_REF_NAME#v} -f docker/Dockerfile .
+      - name: Assets and notes
+        run: |
+          set -euo pipefail
+          v="${GITHUB_REF_NAME#v}"
+          mkdir -p dist
+          tar -czf "dist/hexward-ai-profiles-${v}.tar.gz" profiles scripts/fetch-model.sh docker-compose.tier.yml docker-compose.remote.yml
+          (cd dist && sha256sum * > SHA256SUMS && cat SHA256SUMS)
+          awk -v h="## ${v}" 'index($0,h)==1{f=1;next} /^## /{if(f)exit} f' CHANGELOG.md > notes.md
+          {
+            echo
+            echo "### Run a tier"
+            echo
+            echo '```sh'
+            echo "git clone --depth 1 -b ${GITHUB_REF_NAME} https://github.com/${GITHUB_REPOSITORY}.git && cd hexward-ai"
+            echo "scripts/fetch-model.sh lab          # or smb, enterprise-4b, enterprise-8b"
+            echo "docker compose --env-file profiles/lab.env -f docker-compose.tier.yml up -d"
+            echo '```'
+            echo
+            echo "Model tiers, measured timings and BYO endpoints: docs/TIERS.md."
+          } >> notes.md
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" \
+            --title "hexward-ai ${GITHUB_REF_NAME#v}" --notes-file notes.md --latest

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.4 — 2026-09-24
+
+- **Now in 12 Hexward products.** RuleHawk, CertLight, Attack Surface Monitor, Decoy, Patchlight, Loglight, DmarcWatch, TenantWatch, Posture Report, AuditLight, TopoLight and RuleForge each have an optional ✨ Explain button, and each uses this client unchanged. AuditLight also uses `auditlight.why_disappeared` on its change report.
+- Release automation: a `v*` tag publishes a GitHub release. The release carries the CHANGELOG section and a `hexward-ai-profiles-<version>.tar.gz` asset (tier profiles, `fetch-model.sh`, both compose files) with its `SHA256SUMS`. The workflow also runs the tests and a Docker build as a compile check.
+
 ## 0.2.3 — 2026-09-24
 
 - **Deterministic severity guard.** The prompt instruction from 0.2.2 was not enough: SmolLM3 still called an `info` finding "low-severity" in one of two live runs. For `hexward.explain_finding`, the client now drops any English sentence that pairs a *different* severity word with "severity", "risk" or "priority". Examples are "low-severity", "high risk" and "severity is medium". The engine's own word is never touched. If every sentence would be dropped, the text is returned unchanged. Indonesian narration is not filtered yet; the disclaimer still applies. See `guard.go` and its tests.

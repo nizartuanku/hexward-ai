@@ -25,7 +25,7 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile
-    image: hexward/hexward-ai:0.2.0
+    image: hexward/hexward-ai:0.2.4
     container_name: hexward-ai
     ports:
       - "127.0.0.1:${HEXWARD_AI_PUBLISH_PORT:-8435}:8435"

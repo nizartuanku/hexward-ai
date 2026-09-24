@@ -84,7 +84,7 @@ full explanation.
 ```bash
 git clone https://github.com/nizartuanku/hexward-ai.git
 cd hexward-ai
-docker build -t hexward/hexward-ai:0.2.0 -f docker/Dockerfile .
+docker build -t hexward/hexward-ai:0.2.4 -f docker/Dockerfile .
 docker compose -f docker-compose.ai.yml up   # downloads the free-tier model on first start
 curl http://127.0.0.1:8435/health
 ```

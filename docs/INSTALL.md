@@ -17,7 +17,7 @@ DevNet VM (Go 1.27, Docker 29.8) at the commit this file ships with.
 ```bash
 git clone https://github.com/nizartuanku/hexward-ai.git
 cd hexward-ai
-docker build -t hexward/hexward-ai:0.2.0 -f docker/Dockerfile .
+docker build -t hexward/hexward-ai:0.2.4 -f docker/Dockerfile .
 ```
 
 The base image is `ghcr.io/ggml-org/llama.cpp:server`, the llama.cpp project's own published
@@ -59,7 +59,7 @@ docker run -d \
   --name hexward-ai \
   -p 127.0.0.1:8435:8435 \
   -v /path/on/host/model.gguf:/models/model.gguf:ro \
-  hexward/hexward-ai:0.2.0
+  hexward/hexward-ai:0.2.4
 ```
 
 Verify the checksum of whatever `.gguf` file you downloaded against the value the model's own

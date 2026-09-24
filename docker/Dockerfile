@@ -1,6 +1,6 @@
 # hexward-ai — Dockerfile
 #
-# Build: docker build -t hexward/hexward-ai:0.2.0 -f docker/Dockerfile .
+# Build: docker build -t hexward/hexward-ai:0.2.4 -f docker/Dockerfile .
 # Run:   docker compose -f docker-compose.ai.yml up
 #
 # Wraps the upstream llama.cpp OpenAI-compatible server (built and
