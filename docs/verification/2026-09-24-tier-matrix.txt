@@ -1,0 +1,95 @@
+=== auth check smb without key (expect 401)
+401
+=== lab en
+{
+  "explanation": "The TLS certificate for mail.example.com:443 is set to expire in 12 days. This means that the certificate will no longer be valid after October 6, 2026, at 00:00 UTC. The issuer of the certificate is R11, and the certificate will expire on October 6, 2026. To address this, the certificate must be renewed and deployed before the expiry date. It is recommended to confirm that the full chain of trust is being served to ensure that the certificate can be trusted.",
+  "what_to_verify": [
+    "The certificate will expire on October 6, 2026, at 00:00 UTC.",
+    "The issuer of the certificate is R11.",
+    "The full chain of trust is being served.",
+    "The certificate has been renewed and deployed before the expiry date."
+  ],
+  "disclaimer": "AI-generated summary — verify against raw findings"
+}
+elapsed 22.063s
+=== lab id
+{
+  "explanation": "Pada server mail.example.com:443, ada sertifikat TLS yang akan kadalujuh pada tanggal 6 Oktober 2026. Sertifikat ini akan habis pada 00:00 WIB, dan ada 12 hari lagi sebelum itu. Anda harus memindahkan sertifikat baru sebelum wakti tersebut untuk memastikan keamanan server.",
+  "what_to_verify": [
+    "Sertifikat baru telah diindahkan dan di-deploy sebelum tanggal 6 Oktober 2026",
+    "Sertifikat baru memiliki kait lengkap yang dapat diakses"
+  ],
+  "disclaimer": "AI-generated summary — verify against raw findings"
+}
+elapsed 13.067s
+=== smb en
+{
+  "explanation": "The finding indicates that the TLS certificate for mail.example.com:443 is set to expire in 12 days. It is important to renew and deploy the new certificate before the expiry date to maintain secure communications. The full chain of the certificate should also be served.",
+  "what_to_verify": [
+    "Confirm the current expiry date of the TLS certificate for mail.example.com:443.",
+    "Renew the TLS certificate and ensure it is valid for an extended period.",
+    "Deploy the new certificate and confirm that the full chain is correctly served."
+  ],
+  "disclaimer": "AI-generated summary — verify against raw findings"
+}
+elapsed 22.15s
+=== smb id
+{
+  "explanation": "Finding ini menunjukkan bahwa sertifikat TLS untuk host mail.example.com:443 akan berakhir dalam 12 hari. Ini penting karena sertifikat yang berakhir akan menyebabkan koneksi TLS tidak dapat dipertahankan, yang dapat mengakibatkan akses yang tidak dapat diakses ke layanan email.",
+  "what_to_verify": [
+    "Ulangi proses pembaruan sertifikat dan deploykannya sebelum tanggal berakhir.",
+    "Konfirmasi bahwa seluruh jalur sertifikat yang lengkap telah dipertahankan."
+  ],
+  "disclaimer": "AI-generated summary — verify against raw findings"
+}
+elapsed 14.989s
+=== smb nokey (expect invalid request/401)
+error: aiclient: hexward-ai rejected the request: HTTP 401: {"error":{"message":"Invalid API Key","type":"authentication_error","code":401}}
+=== ent4b en
+{
+  "explanation": "The TLS certificate for mail.example.com:443 is set to expire in 12 days. The certificate is issued by R11 and will be valid until October 6, 2026. This is a high-severity issue that needs to be addressed before the certificate expires to ensure continued secure communication.",
+  "what_to_verify": [
+    "Confirm that the certificate is indeed expiring in 12 days",
+    "Verify that the certificate issuer is R11",
+    "Check that the certificate's validity period is correctly set to end on October 6, 2026",
+    "Ensure that the full chain of certificates is properly served and validated",
+    "Confirm that the remediation steps have been completed and the new certificate is deployed before the expiry date"
+  ],
+  "disclaimer": "AI-generated summary — verify against raw findings"
+}
+elapsed 27.075s
+=== ent4b id
+{
+  "explanation": "Sertifikat TLS untuk host mail.example.com:443 akan kedaluwarsa dalam 12 hari. Sertifikat ini dikeluarkan oleh issuer R11 dan akan berakhir pada 2026-10-06T00:00:00Z. Dengan keparahan tinggi, sertifikat ini perlu diperbarui sebelum tanggal kedaluwarsa untuk memastikan keamanan dan ketersediaan layanan.",
+  "what_to_verify": [
+    "Sertifikat TLS untuk host mail.example.com:443 masih valid dan belum kedaluwarsa.",
+    "Sertifikat telah diperbarui dan telah diimplementasikan sebelum tanggal kedaluwarsa.",
+    "Lingkaran penuh sertifikat telah disajikan dan berfungsi dengan baik."
+  ],
+  "disclaimer": "AI-generated summary — verify against raw findings"
+}
+elapsed 25.049s
+=== ent8b en
+{
+  "explanation": "The TLS certificate for the target 'mail.example.com:443' is set to expire in 12 days. This is a high-severity issue because an expired certificate can disrupt secure communications and may lead to connection failures or security vulnerabilities. The certificate is issued by 'R11' and will expire on '2026-10-06T00:00:00Z'. To resolve this, the certificate must be renewed and deployed before the expiry date, and the full certificate chain must be confirmed as being served correctly.",
+  "what_to_verify": [
+    "The expiry date of the certificate is correctly calculated and matches the 'days_left' value.",
+    "The certificate issuer 'R11' is valid and trusted.",
+    "The full certificate chain is correctly configured and served by the target.",
+    "The remediation steps have been completed and the certificate is renewed before the expiry date."
+  ],
+  "disclaimer": "AI-generated summary — verify against raw findings"
+}
+elapsed 52.605s
+=== ent8b id
+{
+  "explanation": "Pada sertifikat TLS untuk target 'mail.example.com:443', sertifikat tersebut akan kedaluwarsa dalam 12 hari. Hal ini merupakan masalah karena sertifikat yang mendekati akhir masa berlakunya dapat menyebabkan layanan tidak tersedia atau tidak aman. Sertifikat harus diperbarui dan diterapkan sebelum tanggal kedaluwarsa. Pastikan seluruh rantai sertifikat disajikan secara lengkap.",
+  "what_to_verify": [
+    "Apakah tanggal kedaluwarsa sertifikat benar-benar '2026-10-06T00:00:00Z'?",
+    "Apakah sertifikat yang diterapkan pada 'mail.example.com:443' benar-benar dari pihak yang sah dan memiliki rantai yang lengkap?",
+    "Apakah proses pembaruan sertifikat sudah direncanakan dan siap dilakukan sebelum tanggal kedaluwarsa?"
+  ],
+  "disclaimer": "AI-generated summary — verify against raw findings"
+}
+elapsed 49.282s
+MATRIXDONE

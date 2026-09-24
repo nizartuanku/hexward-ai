@@ -55,11 +55,42 @@ EOF
   exit 1
 fi
 
-echo "hexward-ai: starting on ${HOST}:${PORT}, grammar ${GRAMMAR_FILE}, ctx-size ${CTX_SIZE}"
+# API key (Pro/Team dedicated AI host, or any bind beyond loopback).
+# HEXWARD_AI_API_KEY_FILE (a Docker/Compose secret) wins over the plain
+# variable so the key never has to appear in `docker inspect` output.
+API_KEY="${HEXWARD_AI_API_KEY:-}"
+if [ -n "${HEXWARD_AI_API_KEY_FILE:-}" ]; then
+  if [ ! -r "$HEXWARD_AI_API_KEY_FILE" ]; then
+    echo "hexward-ai: FATAL — HEXWARD_AI_API_KEY_FILE=$HEXWARD_AI_API_KEY_FILE is not readable." >&2
+    exit 1
+  fi
+  API_KEY="$(tr -d '\r\n' < "$HEXWARD_AI_API_KEY_FILE")"
+fi
+AUTH_ARGS=()
+if [ -n "$API_KEY" ]; then
+  if [ "${#API_KEY}" -lt 24 ]; then
+    echo "hexward-ai: FATAL — API key is shorter than 24 characters. Generate one with: openssl rand -hex 32" >&2
+    exit 1
+  fi
+  AUTH_ARGS=(--api-key "$API_KEY")
+  echo "hexward-ai: API key required on every request (Authorization: Bearer ...)"
+elif [ "${HEXWARD_AI_REQUIRE_API_KEY:-0}" = "1" ]; then
+  echo "hexward-ai: FATAL — HEXWARD_AI_REQUIRE_API_KEY=1 but no key was provided (set HEXWARD_AI_API_KEY_FILE or HEXWARD_AI_API_KEY)." >&2
+  exit 1
+fi
+
+THREAD_ARGS=()
+if [ -n "${HEXWARD_AI_THREADS:-}" ]; then
+  THREAD_ARGS=(--threads "$HEXWARD_AI_THREADS")
+fi
+
+echo "hexward-ai: tier ${HEXWARD_AI_TIER:-unspecified}, starting on ${HOST}:${PORT}, grammar ${GRAMMAR_FILE}, ctx-size ${CTX_SIZE}"
 exec /app/llama-server \
   --host "$HOST" \
   --port "$PORT" \
   --ctx-size "$CTX_SIZE" \
   --grammar-file "$GRAMMAR_FILE" \
+  "${THREAD_ARGS[@]}" \
+  "${AUTH_ARGS[@]}" \
   "${MODEL_ARGS[@]}" \
   "$@"

@@ -47,7 +47,35 @@ const (
 	// already carries this distinction; the sidecar only puts it into
 	// plain language, it never re-derives the classification itself.
 	FeatureAuditLightWhyDisappeared Feature = "auditlight.why_disappeared"
+
+	// FeatureExplainFinding is the generic, product-agnostic "explain
+	// this finding" feature used by every Hexward product built on the
+	// shared core.Finding shape (CertLight, Attack Surface Monitor,
+	// Decoy, Patchlight, Loglight, DmarcWatch, TenantWatch, Posture
+	// Report, and any later product on the same contract). Its payload
+	// is a CoreFinding, built with NewFindingPacket so that evidence is
+	// capped and secret-looking keys are dropped before anything leaves
+	// the product.
+	FeatureExplainFinding Feature = "hexward.explain_finding"
 )
+
+// CoreFinding is the subset of a product's core.Finding that the generic
+// explain feature forwards. Field names match core.Finding's JSON tags so
+// a product can convert with a plain field copy. Evidence is whatever the
+// product's own check recorded; NewFindingPacket sanitises it — callers
+// should not put raw configs, credentials or full logs here in the first
+// place (spec §7), but the client does not rely on that alone.
+type CoreFinding struct {
+	Fingerprint string         `json:"fingerprint,omitempty"`
+	Module      string         `json:"module,omitempty"`
+	Check       string         `json:"check"`
+	Title       string         `json:"title"`
+	Target      string         `json:"target,omitempty"`
+	Severity    string         `json:"severity"`
+	Status      string         `json:"status,omitempty"`
+	Remediation string         `json:"remediation,omitempty"`
+	Evidence    map[string]any `json:"evidence,omitempty"`
+}
 
 // CoverageStatus is the closed set of reasons AuditLight/Posture Report
 // already tracks for why a finding is no longer present. The caller reads
@@ -71,10 +99,14 @@ const (
 // marshaled by the caller; the client does not interpret it, it only
 // forwards it inside the prompt for the model to read.
 type EvidencePacket struct {
-	Feature  Feature         `json:"feature"`
-	Product  string          `json:"product"`
-	Finding  json.RawMessage `json:"finding"`
-	Language string          `json:"language,omitempty"`
+	Feature Feature         `json:"feature"`
+	Product string          `json:"product"`
+	Finding json.RawMessage `json:"finding"`
+	// Language selects the narration language: "en" (default) or "id"
+	// (Bahasa Indonesia). Any other value falls back to English. The
+	// client turns this into an explicit instruction — models ignore a
+	// bare field in the payload (observed on Phi-4-mini and Qwen3-4B).
+	Language string `json:"language,omitempty"`
 }
 
 // RuleHawkFinding is the self-contained shape of one shadowed/permissive

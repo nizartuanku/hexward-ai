@@ -1,0 +1,29 @@
+# docker-compose.remote.yml — overlay for a dedicated AI host that serves
+# several Hexward products over the network (Whop Pro / Team, Enterprise).
+#
+#   openssl rand -hex 32 > secrets/ai_api_key
+#   sudo chown 10435:10435 secrets/ai_api_key && sudo chmod 400 secrets/ai_api_key
+#   docker compose --env-file profiles/smb.env \
+#     -f docker-compose.tier.yml -f docker-compose.remote.yml up -d
+#
+# Then point each product at it, e.g.
+#   rulehawk -ai-assist-url http://ai-host.lan:8435 -ai-assist-key-file /etc/hexward/ai_api_key
+#
+# The sidecar refuses to start without the key (HEXWARD_AI_REQUIRE_API_KEY=1).
+# Traffic is plain HTTP: keep it on a management VLAN, or put a TLS reverse
+# proxy (Caddy, nginx) in front — evidence packets are small but they do
+# describe your findings.
+
+services:
+  hexward-ai:
+    ports: !override
+      - "${HEXWARD_AI_BIND:-0.0.0.0}:${HEXWARD_AI_PUBLISH_PORT:-8435}:8435"
+    environment:
+      HEXWARD_AI_REQUIRE_API_KEY: "1"
+      HEXWARD_AI_API_KEY_FILE: /run/secrets/ai_api_key
+    secrets:
+      - ai_api_key
+
+secrets:
+  ai_api_key:
+    file: "${HEXWARD_AI_API_KEY_PATH:-./secrets/ai_api_key}"

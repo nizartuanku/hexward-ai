@@ -16,3 +16,7 @@
 # OS/editor noise
 .DS_Store
 *.swp
+models/
+secrets/
+*.gguf
+*.part

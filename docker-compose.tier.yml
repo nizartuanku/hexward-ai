@@ -1,0 +1,52 @@
+# docker-compose.tier.yml — run hexward-ai for one licensed tier, fully
+# offline, with a pre-downloaded and checksum-verified model.
+#
+#   scripts/fetch-model.sh smb                 # once; verifies sha256 + size
+#   docker compose --env-file profiles/smb.env -f docker-compose.tier.yml up -d
+#
+# Tiers (profiles/*.env):
+#   lab            SmolLM3-3B          Apache-2.0  GitHub free edition
+#   smb            Phi-4-mini-instruct MIT         Whop Pro / Team
+#   enterprise-4b  Qwen3-4B            Apache-2.0  Enterprise (compact)
+#   enterprise-8b  Qwen3-8B            Apache-2.0  Enterprise (standard)
+#
+# By default the port is bound to loopback only (127.0.0.1:8435), which is
+# the free-edition deployment: the product and the sidecar share one host.
+# To serve several products from one dedicated AI host (Pro/Team), add
+# docker-compose.remote.yml, which binds beyond loopback AND refuses to
+# start without an API key.
+#
+# No Hugging Face download happens here: HEXWARD_AI_HF_REPO is never set,
+# so if the model file is missing the container stops with a clear error
+# instead of reaching the internet.
+
+services:
+  hexward-ai:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: hexward/hexward-ai:0.2.0
+    container_name: hexward-ai
+    ports:
+      - "127.0.0.1:${HEXWARD_AI_PUBLISH_PORT:-8435}:8435"
+    environment:
+      HEXWARD_AI_TIER: "${HEXWARD_AI_TIER:?use --env-file profiles/<tier>.env}"
+      HEXWARD_AI_MODEL_PATH: /models/model.gguf
+      HEXWARD_AI_CTX_SIZE: "${HEXWARD_AI_CTX_SIZE:-4096}"
+      HEXWARD_AI_THREADS: "${HEXWARD_AI_THREADS:-}"
+    volumes:
+      - "${HEXWARD_AI_MODELS_DIR:-./models}/${HEXWARD_AI_MODEL_FILE:?use --env-file profiles/<tier>.env}:/models/model.gguf:ro"
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:8435/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 180s
+    restart: unless-stopped

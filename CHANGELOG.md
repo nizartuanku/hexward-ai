@@ -1,6 +1,37 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 — 2026-09-24
+
+- **All four model tiers are verified end to end on real hardware**, in English and Bahasa
+  Indonesia: `lab` (SmolLM3-3B), `smb` (Phi-4-mini-instruct), `enterprise-4b` (Qwen3-4B) and
+  `enterprise-8b` (Qwen3-8B). Timings and the raw responses are in `docs/TIERS.md` and
+  `docs/verification/`.
+- **Generic feature `hexward.explain_finding`**, for every product on the shared `core.Finding`
+  contract. `aiclient.CoreFinding` and `aiclient.NewFindingPacket` go with it, plus
+  `SanitizeEvidence`: secret-like keys are dropped at every level, and strings, lists, key count
+  and depth are capped. A new prompt template ships at `docker/prompts/hexward_explain_finding.tmpl`.
+- **Fix: the narration language was ignored.** A bare `"language":"id"` in the packet was not
+  followed by Phi-4-mini or Qwen3-4B. The client now adds an explicit instruction at the end of
+  the system prompt and of the user turn. `NormalizeLanguage` accepts `id`, `id-ID`, `in` and
+  `bahasa`; anything else falls back to English.
+- **Tier profiles and a verified fetch script.** Each `profiles/*.env` pins a Hugging Face repo,
+  commit, file size and SHA-256. `scripts/fetch-model.sh` refuses any mismatch.
+- **Offline tier compose file (`docker-compose.tier.yml`).** It never downloads anything, and it
+  runs read-only with all capabilities dropped, bound to loopback.
+- **Dedicated AI host overlay (`docker-compose.remote.yml`).** The entrypoint supports
+  `HEXWARD_AI_API_KEY_FILE` and `HEXWARD_AI_API_KEY`, refuses keys shorter than 24 characters,
+  and refuses to start without a key when `HEXWARD_AI_REQUIRE_API_KEY=1`. Requests without the
+  key get HTTP 401 (verified).
+- **New client options.** `WithAPIKey` sends a bearer token for a remote or BYO endpoint.
+  `WithDisableThinking` turns off Qwen3's reasoning mode through `chat_template_kwargs`. Both
+  are omitted from the request unless set.
+- `HEXWARD_AI_THREADS` and `HEXWARD_AI_TIER` entrypoint variables. New example
+  `examples/explain-finding`.
+- New tests cover language normalisation, evidence sanitising and bounds, packet validation,
+  the language instruction's placement, the bearer header, and the thinking switch.
+  `go test -race ./...` passes.
+
+## 0.1.0 (unreleased scaffolding)
 
 - First scaffolding of `hexward-ai`: the shared, optional AI Assist sidecar for the Hexward product line (kiriman #16, R&D → Dapur Engineering).
 - `internal/aiclient` — the Go client every pilot product copies into its own repo: an OpenAI-compatible `/v1/chat/completions` caller, typed `EvidencePacket`/`Explanation` structs for both Phase 1 pilot features, timeouts, bounded retries on transport errors and HTTP 5xx only (never on 4xx or malformed JSON), and a hard client-side override of the `disclaimer` field to the canonical sentence regardless of what the model returned. Ships with `httptest`-based unit tests covering the happy path, an unreachable sidecar, retry exhaustion, non-retryable 4xx, malformed JSON at both the transport and model-content layers, and context cancellation. `go test -race ./...` is green.

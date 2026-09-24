@@ -16,9 +16,11 @@ this sidecar uses and why one alone is not enough.
 
 ## Status
 
-**Early scaffolding, but a real one — the sidecar has been built, downloaded a real model, and
-answered a real request end to end (see "What was verified end to end" below).** It is not yet
-wired into any product's UI. There is no tagged release; everything here is built from `main`.
+**v0.2.0: all four tiers are verified end to end on real hardware.** That means the free
+(SmolLM3-3B), Pro/Team (Phi-4-mini-instruct) and Enterprise (Qwen3-4B / Qwen3-8B) profiles, in
+English and in Bahasa Indonesia. See `docs/TIERS.md` for the measured timings and the raw output.
+RuleHawk is the first product with the Explain button in its dashboard. The rest of the
+Hexward line is being wired in through the generic `hexward.explain_finding` feature.
 
 ## What this is not
 
@@ -30,7 +32,7 @@ wired into any product's UI. There is no tagged release; everything here is buil
   questions (see below) — it does not take arbitrary questions, and it is not meant to.
 - **Not a remediation tool.** It explains why a finding matters; it never drafts a fix.
 
-## Phase 1 pilot: the only two things it does
+## What it does
 
 1. **RuleHawk — "Explain this finding."** One shadowed/permissive rule finding in, a
    plain-language explanation and a checklist of what to verify out. No drafted rule change.
@@ -39,6 +41,13 @@ wired into any product's UI. There is no tagged release; everything here is buil
    classification the product already made), a plain-language explanation of what that
    actually means out. This exists specifically so "no longer detected" never gets misread as
    "fixed".
+3. **Any product on the shared finding contract — "Explain this finding" (generic).** One
+   finding in the shared `core.Finding` shape (CertLight, Attack Surface Monitor, Decoy,
+   Patchlight, Loglight, DmarcWatch, TenantWatch, Posture Report), sanitised by
+   `aiclient.NewFindingPacket`, and a plain-language explanation plus a verification checklist
+   out. The product's own remediation text may be restated, never replaced.
+
+Narration language is English or Bahasa Indonesia (`Language: "en" | "id"`).
 
 ## Architecture
 
@@ -75,7 +84,7 @@ full explanation.
 ```bash
 git clone https://github.com/nizartuanku/hexward-ai.git
 cd hexward-ai
-docker build -t hexward/hexward-ai:0.1.0 -f docker/Dockerfile .
+docker build -t hexward/hexward-ai:0.2.0 -f docker/Dockerfile .
 docker compose -f docker-compose.ai.yml up   # downloads the free-tier model on first start
 curl http://127.0.0.1:8435/health
 ```
@@ -85,14 +94,20 @@ Full instructions, including a fully offline path with your own pre-downloaded m
 
 ## Model tiers
 
-| Tier | Model | License | Notes |
-|---|---|---|---|
-| GitHub lab (free) | SmolLM3-3B | Apache-2.0 | Lightest download, CPU-only demo |
-| SMB — Pro/Team | Phi-4-mini-instruct | MIT | CPU-capable, native multilingual (EN/ID), 128K context |
-| Enterprise | Qwen3 4B/8B, or BYO-endpoint | Apache-2.0 | Stronger reasoning; BYO avoids Hexward distributing large weights |
+| Profile | Edition | Model | Licence | Where it runs |
+|---|---|---|---|---|
+| `lab` | GitHub free | SmolLM3-3B | Apache-2.0 | Same host as the product, loopback only |
+| `smb` | Whop Pro / Team | Phi-4-mini-instruct | MIT | Same host, or one dedicated AI host with an API key |
+| `enterprise-4b` / `enterprise-8b` | Enterprise | Qwen3-4B / Qwen3-8B | Apache-2.0 | Dedicated AI host |
+| BYO | Enterprise | Your OpenAI-compatible endpoint | yours | Your infrastructure |
 
-Which tier is available is decided by the calling product's own license (a new `ai_assist`
-flag on the existing Ed25519 payload — no new licensing system), not by anything in this repo.
+Every profile pins its source commit, file size and SHA-256 (`profiles/*.env`), and
+`scripts/fetch-model.sh <profile>` refuses any file that does not match both. Full details,
+the dedicated-host setup and BYO notes are in `docs/TIERS.md`.
+
+The calling product's own licence decides where it may send findings. The free edition talks
+only to a loopback sidecar. Pro/Team and Enterprise may also use a remote AI host or a BYO
+endpoint. This uses the existing Ed25519 licence tiers, so no new licensing system is needed.
 
 ## Server requirements
 
@@ -104,9 +119,9 @@ Approximate, CPU-only, additional to the product's own footprint:
 | Phi-4-mini-instruct (SMB) | +4 GB | +2 vCPU recommended |
 | Qwen3 4B/8B (Enterprise) | +6-12 GB | Larger context, slower per-request on CPU |
 
-These are vendor/quantization-level approximations, not measured on Hexward's own hardware —
-unlike the RSS figures Hexward publishes for its Go binaries, no one has benchmarked these
-models end to end in this repo yet (see "What is not done yet").
+The RAM figures above are approximations. Response times *were* measured, on a CPU-only VM,
+and are published with the raw outputs in `docs/TIERS.md`. On that VM one explanation took
+13–27 s for 3–4B models and about 50 s for Qwen3-8B.
 
 ## `internal/aiclient`
 
@@ -126,6 +141,13 @@ The Go client every pilot product copies into its own repo:
   different ways a *reachable* sidecar can still fail.
 - The `disclaimer` field returned to callers is always the canonical sentence, overwritten by
   the client itself — never taken on trust from the model.
+- `NewFindingPacket` / `SanitizeEvidence`: builds the generic packet and drops secret-like
+  evidence keys (password, token, secret, private, credential, cookie, session, signature and
+  similar) at every nesting level. It also caps strings, lists, key count and nesting depth.
+- `NormalizeLanguage`, plus an explicit language instruction at the end of both the system
+  prompt and the user turn. Small models ignore a bare `"language"` field. This was measured,
+  and it is why the instruction is there.
+- `WithAPIKey` for a dedicated AI host or a BYO endpoint. `WithDisableThinking` for Qwen3.
 
 Tested with `go test -race ./...` against an `httptest` mock server (no live model needed) —
 see `internal/aiclient/client_test.go` for the full list of covered cases (happy path,
@@ -134,8 +156,9 @@ transport and model-content layers, context cancellation, and evidence-packet va
 
 ## Examples
 
-`examples/rulehawk-explain-finding/` and `examples/auditlight-why-disappeared/` are minimal,
-runnable programs showing exactly how each pilot product would call `internal/aiclient`. Run
+`examples/explain-finding/` (generic, any tier: `-url`, `-lang id`, `-key-file`,
+`-no-thinking`), `examples/rulehawk-explain-finding/` and `examples/auditlight-why-disappeared/`
+are minimal, runnable programs showing exactly how a product calls `internal/aiclient`. Run
 either one against a live sidecar with `go run ./examples/<name>`.
 
 ## Security & grounding rules (spec §7)
@@ -210,21 +233,19 @@ this session budgeted the ~2 GB download instead of stopping at "the code compil
 
 Named honestly so the next session (or the next engineer) does not have to rediscover it:
 
-1. **Not wired into RuleHawk's or AuditLight's real UI.** `examples/` shows the calling pattern
-   with a hand-built sample finding, verified against a live sidecar; neither product's
-   dashboard calls `internal/aiclient` yet.
+1. **Product wiring is in progress.** RuleHawk's dashboard has the Explain button on `main`.
+   Each other product gets it in its own release. The product's README and CHANGELOG say when
+   it has shipped.
 2. **The full CI grounding gate from spec §10 is not implemented.** CI currently builds the
    Docker image (`docker build`) as a compile-time check; it does not yet bring up a model and
    assert (a) grammar-valid JSON, (b) no invented token, (c) no panic when the sidecar is
    killed mid-request. This needs a decision about where a ~2 GB model download and ~90s of
    CPU inference fits in CI budget before it can be built responsibly.
-3. **Phi-4-mini-instruct and Qwen3 have not been downloaded, run, or benchmarked.** Only the
-   free-tier SmolLM3-3B path has been run end to end; the SMB and Enterprise rows in the model
-   table above are the spec's stated choice, not something this session measured. SmolLM3-3B's
-   own generation speed on this VM (~1 tok/s, CPU-only, no GPU) is also worth noting as a real
-   number, not a footnote: a product surfacing this narration to a user needs either a faster
-   host, a GPU, or a visible "thinking" state in the UI — instant response is not realistic on
-   commodity CPU hardware with this class of model.
+3. **Bahasa Indonesia on the free tier is experimental.** In the tier matrix SmolLM3-3B
+   produced Indonesian with spelling errors, and once it mentioned a time zone that was not in
+   the evidence. Use English on the `lab` profile, or use `smb` or Enterprise for Indonesian.
+   Responses take seconds to tens of seconds on CPU, so products always show a visible
+   "explaining…" state.
 4. **The naive grounding check (spec §10.b: "no token outside the evidence packet appears in
    the response") has not been automated.** The one real response captured above was read by a
    human, not checked by a script, for whether it stayed grounded — building that check is part

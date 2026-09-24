@@ -76,6 +76,8 @@ type Client struct {
 	retryBackoff time.Duration
 	grammar      string
 	maxTokens    int
+	apiKey       string
+	noThinking   bool
 }
 
 // Option configures a Client constructed with New.
@@ -163,6 +165,24 @@ func WithMaxTokens(n int) Option {
 	}
 }
 
+// WithAPIKey sends "Authorization: Bearer <key>" on every request. Needed
+// when the sidecar is not on loopback: a dedicated AI host serving several
+// products (Pro/Team tier, started with HEXWARD_AI_API_KEY so llama.cpp
+// enforces --api-key), or a BYO OpenAI-compatible endpoint (vLLM, Ollama
+// behind a proxy, an internal LLM gateway). An empty key sends no header.
+func WithAPIKey(key string) Option {
+	return func(c *Client) { c.apiKey = strings.TrimSpace(key) }
+}
+
+// WithDisableThinking asks chat templates that support a reasoning mode
+// (Qwen3) to skip it, via the chat_template_kwargs extension understood by
+// llama.cpp and vLLM. Narration of one finding does not benefit from a
+// hidden reasoning pass, and on CPU it multiplies latency. Leave it off
+// for endpoints that reject unknown request fields.
+func WithDisableThinking() Option {
+	return func(c *Client) { c.noThinking = true }
+}
+
 // New creates a Client for the sidecar at baseURL (normally
 // DefaultBaseURL). It never fails and never dials — no connection is
 // attempted until Explain is called, so constructing a Client when the
@@ -196,9 +216,38 @@ const systemPrompt = `You are the Hexward AI Assist narrator. You will receive o
 Rules you must follow exactly:
 1. Use ONLY the fields inside the evidence packet. Do not state any fact (an ID, a rule number, an IP address, a hostname, a CVE identifier, a date, or any other specific value) that is not present in the packet. If something relevant is not in the packet, say plainly that the evidence does not contain it.
 2. You narrate; you do not decide. Never invent a new finding, never change or imply a different severity, never claim something is fixed, safe, or dangerous beyond what the packet already states.
-3. If the feature is rulehawk.explain_finding: explain in plain language why the rule relationship in the packet matters, and list what a human should verify before touching the rule. Never draft a replacement rule or CLI command.
-4. If the feature is auditlight.why_disappeared: explain, using only the packet's "status" field and its plain meaning (fixed / no_longer_detected / check_failed / target_skipped), which of those happened and what that means for how much the report can be trusted. Never claim "fixed" for any other status value.
-5. Respond with a single JSON object matching the required schema exactly: {"explanation": string, "what_to_verify": [string, ...], "disclaimer": string}. No prose outside the JSON object.`
+3. If the feature is hexward.explain_finding: explain in plain language what the finding means, using only its check, title, target, severity, status, remediation and evidence fields, and why it matters to the owner of that target. List what a human should verify before acting. You may restate the packet's own remediation text; never invent a different fix, command, or configuration.
+4. If the feature is rulehawk.explain_finding: explain in plain language why the rule relationship in the packet matters, and list what a human should verify before touching the rule. Never draft a replacement rule or CLI command.
+5. If the feature is auditlight.why_disappeared: explain, using only the packet's "status" field and its plain meaning (fixed / no_longer_detected / check_failed / target_skipped), which of those happened and what that means for how much the report can be trusted. Never claim "fixed" for any other status value.
+6. Respond with a single JSON object matching the required schema exactly: {"explanation": string, "what_to_verify": [string, ...], "disclaimer": string}. No prose outside the JSON object.`
+
+// NormalizeLanguage maps a caller's language hint to the two narration
+// languages hexward-ai supports: "id" for Bahasa Indonesia (accepting
+// "id", "id-ID", "in", "ind", "indonesian", "bahasa" in any case) and "en"
+// for everything else, including the empty string.
+func NormalizeLanguage(lang string) string {
+	l := strings.ToLower(strings.TrimSpace(lang))
+	l = strings.ReplaceAll(l, "_", "-")
+	switch {
+	case l == "id", l == "in", l == "ind", strings.HasPrefix(l, "id-"),
+		l == "indonesian", l == "bahasa", l == "bahasa indonesia":
+		return "id"
+	default:
+		return "en"
+	}
+}
+
+// languageInstruction is appended to both the system prompt and the end of
+// the user turn. Testing on DevNet (24 Sep 2026) showed Phi-4-mini and
+// Qwen3-4B answering in English when the only hint was "language":"id"
+// inside the JSON packet; an explicit instruction placed last is what
+// small models reliably follow.
+func languageInstruction(lang string) string {
+	if lang == "id" {
+		return `Write the "explanation" and every "what_to_verify" item in Bahasa Indonesia. Keep rule text, hostnames, IP addresses, identifiers and other field values exactly as they appear in the packet — do not translate them.`
+	}
+	return `Write the "explanation" and every "what_to_verify" item in English.`
+}
 
 // chatMessage mirrors the OpenAI chat-completions message shape.
 type chatMessage struct {
@@ -218,6 +267,9 @@ type chatCompletionRequest struct {
 	Temperature float64       `json:"temperature"`
 	Grammar     string        `json:"grammar,omitempty"`
 	MaxTokens   int           `json:"max_tokens,omitempty"`
+	// ChatTemplateKwargs is a llama.cpp/vLLM extension; only sent when
+	// WithDisableThinking is set.
+	ChatTemplateKwargs map[string]any `json:"chat_template_kwargs,omitempty"`
 }
 
 // chatCompletionResponse mirrors the subset of the OpenAI response shape
@@ -256,6 +308,7 @@ func (c *Client) Explain(ctx context.Context, evidence EvidencePacket) (*Explana
 		return nil, fmt.Errorf("aiclient: EvidencePacket.Finding is required")
 	}
 
+	evidence.Language = NormalizeLanguage(evidence.Language)
 	payload, err := json.Marshal(evidence)
 	if err != nil {
 		return nil, fmt.Errorf("aiclient: marshal evidence packet: %w", err)
@@ -264,8 +317,8 @@ func (c *Client) Explain(ctx context.Context, evidence EvidencePacket) (*Explana
 	reqBody := chatCompletionRequest{
 		Model: c.model,
 		Messages: []chatMessage{
-			{Role: "system", Content: systemPrompt},
-			{Role: "user", Content: string(payload)},
+			{Role: "system", Content: systemPrompt + "\n7. " + languageInstruction(evidence.Language)},
+			{Role: "user", Content: string(payload) + "\n\n" + languageInstruction(evidence.Language)},
 		},
 		// Low, not zero: some llama.cpp builds treat temperature 0 as
 		// "unset" and fall back to a sampler default. Low temperature
@@ -274,6 +327,9 @@ func (c *Client) Explain(ctx context.Context, evidence EvidencePacket) (*Explana
 		Temperature: 0.2,
 		Grammar:     c.grammar,
 		MaxTokens:   c.maxTokens,
+	}
+	if c.noThinking {
+		reqBody.ChatTemplateKwargs = map[string]any{"enable_thinking": false}
 	}
 
 	var lastErr error
@@ -328,6 +384,9 @@ func (c *Client) doRequest(ctx context.Context, reqBody chatCompletionRequest) (
 		return nil, fmt.Errorf("aiclient: build request: %w", err)
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
+	if c.apiKey != "" {
+		httpReq.Header.Set("Authorization", "Bearer "+c.apiKey)
+	}
 
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {

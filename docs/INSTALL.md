@@ -17,7 +17,7 @@ DevNet VM (Go 1.27, Docker 29.8) at the commit this file ships with.
 ```bash
 git clone https://github.com/nizartuanku/hexward-ai.git
 cd hexward-ai
-docker build -t hexward/hexward-ai:0.1.0 -f docker/Dockerfile .
+docker build -t hexward/hexward-ai:0.2.0 -f docker/Dockerfile .
 ```
 
 The base image is `ghcr.io/ggml-org/llama.cpp:server`, the llama.cpp project's own published
@@ -59,7 +59,7 @@ docker run -d \
   --name hexward-ai \
   -p 127.0.0.1:8435:8435 \
   -v /path/on/host/model.gguf:/models/model.gguf:ro \
-  hexward/hexward-ai:0.1.0
+  hexward/hexward-ai:0.2.0
 ```
 
 Verify the checksum of whatever `.gguf` file you downloaded against the value the model's own
@@ -88,11 +88,15 @@ go test -race ./...
 
 ## Model tiers and where their weights come from
 
-| Tier | Model | License | Source |
+| Profile | Model | Licence | Source |
 |---|---|---|---|
-| GitHub lab (free) | SmolLM3-3B | Apache-2.0 | `ggml-org/SmolLM3-3B-GGUF` on Hugging Face (used by step 3 above) |
-| SMB — Pro/Team | Phi-4-mini-instruct | MIT | Download and verify from Microsoft's published release; mount per step 4 |
-| Enterprise | Qwen3 4B/8B, or BYO-endpoint | Apache-2.0 | Download and verify from Alibaba's published release, or point `internal/aiclient` at the customer's own OpenAI-compatible endpoint instead of this sidecar entirely |
+| `lab` (GitHub free) | SmolLM3-3B | Apache-2.0 | `ggml-org/SmolLM3-3B-GGUF`, pinned commit + SHA-256 in `profiles/lab.env` |
+| `smb` (Pro/Team) | Phi-4-mini-instruct | MIT | `unsloth/Phi-4-mini-instruct-GGUF` (Microsoft publishes no official GGUF), pinned in `profiles/smb.env` |
+| `enterprise-4b` / `-8b` | Qwen3-4B / 8B | Apache-2.0 | Official `Qwen/Qwen3-*-GGUF`, pinned in `profiles/enterprise-*.env` |
+| BYO | your model | yours | Point `internal/aiclient` at your own OpenAI-compatible endpoint |
+
+`scripts/fetch-model.sh <profile>` downloads and verifies any of them, and
+`docker-compose.tier.yml` runs it offline. See `docs/TIERS.md`.
 
 ## Troubleshooting
 
