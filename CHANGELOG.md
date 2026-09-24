@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1 — 2026-09-24
+
+- **Grounding rule tightened: no arithmetic on evidence values.** In a live CertLight test, the free-tier SmolLM3 turned "expired 4182 days ago" into "11 years and 2 days". That is a derived value the evidence does not contain, and it is wrong. The system prompt now forbids calculating, converting, rounding or re-expressing numbers and dates; the model has to quote them as given.
+- **More useful checklists for the generic feature.** The same test showed `what_to_verify` repeating evidence values back ("the issuer is COMODO CA"). The generic rule now asks for two to four concrete checks a person can perform, and keeps the explanation to four sentences at most.
+
 ## 0.2.0 — 2026-09-24
 
 - **All four model tiers are verified end to end on real hardware**, in English and Bahasa
