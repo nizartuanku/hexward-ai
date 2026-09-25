@@ -49,7 +49,7 @@ services:
       # `docker compose down` / `up` so it is not re-downloaded every time.
       - hexward-ai-models:/models
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:8435/health"]
+      test: ["CMD", "curl", "-sf", "http://127.0.0.1:8435/health"]
       interval: 10s
       timeout: 5s
       retries: 30
