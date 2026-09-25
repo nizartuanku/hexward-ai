@@ -82,6 +82,9 @@ sidecars running at the same time. Each request explained one CertLight-style ce
 finding, capped at 300 output tokens. Full raw output is in
 `verification/2026-09-24-tier-matrix.txt`.
 
+English is the supported language in this release. The Bahasa Indonesia column is a preview
+measurement only; more languages will be added based on demand.
+
 | Profile | English | Bahasa Indonesia | Notes |
 |---|---|---|---|
 | lab (SmolLM3-3B) | 22.1 s | 13.1 s | English is good. Indonesian is **experimental** on this tier: it had spelling errors, and it once added a time zone that was not in the evidence. |

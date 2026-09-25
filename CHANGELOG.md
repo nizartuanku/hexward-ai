@@ -4,6 +4,9 @@
 
 - **Fixed: Docker healthcheck reported "unhealthy" even when the sidecar was serving requests normally.** `docker-compose.ai.yml` and `docker-compose.tier.yml` ran `wget -q -O- http://127.0.0.1:8435/health` as the healthcheck command, but the upstream `ghcr.io/ggml-org/llama.cpp:server` image this Dockerfile builds on does not include `wget` (confirmed with `docker exec ... which wget` — not found; `curl` is present). Every check failed with "executable file not found in $PATH", so `docker ps` / `docker compose ps` showed the container as unhealthy indefinitely regardless of whether the server was actually up. Both compose files now use `curl -sf http://127.0.0.1:8435/health`, which is present in the base image. Verified live: container recreated from the fixed file reports `healthy` after the first check interval, with the `/health` endpoint unchanged (still returns 200).
 
+- Docs: English is the supported narration language in this release. Bahasa Indonesia is an
+  unsupported preview; more languages will be added based on demand.
+
 ## 0.2.4 — 2026-09-24
 
 - **Now in 12 Hexward products.** RuleHawk, CertLight, Attack Surface Monitor, Decoy, Patchlight, Loglight, DmarcWatch, TenantWatch, Posture Report, AuditLight, TopoLight and RuleForge each have an optional ✨ Explain button, and each uses this client unchanged. AuditLight also uses `auditlight.why_disappeared` on its change report.

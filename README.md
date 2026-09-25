@@ -47,7 +47,8 @@ Hexward line is being wired in through the generic `hexward.explain_finding` fea
    `aiclient.NewFindingPacket`, and a plain-language explanation plus a verification checklist
    out. The product's own remediation text may be restated, never replaced.
 
-Narration language is English or Bahasa Indonesia (`Language: "en" | "id"`).
+Narration language: English is supported in this release. Bahasa Indonesia (`Language: "id"`)
+is an unsupported preview; more languages will be added based on demand.
 
 ## Architecture
 
@@ -241,9 +242,9 @@ Named honestly so the next session (or the next engineer) does not have to redis
    assert (a) grammar-valid JSON, (b) no invented token, (c) no panic when the sidecar is
    killed mid-request. This needs a decision about where a ~2 GB model download and ~90s of
    CPU inference fits in CI budget before it can be built responsibly.
-3. **Bahasa Indonesia on the free tier is experimental.** In the tier matrix SmolLM3-3B
-   produced Indonesian with spelling errors, and once it mentioned a time zone that was not in
-   the evidence. Use English on the `lab` profile, or use `smb` or Enterprise for Indonesian.
+3. **English is the supported language.** Bahasa Indonesia is an unsupported preview. In the
+   tier matrix SmolLM3-3B (`lab`) produced Indonesian with spelling errors, and once mentioned a
+   time zone that was not in the evidence. Other languages will be strengthened based on demand.
    Responses take seconds to tens of seconds on CPU, so products always show a visible
    "explaining…" state.
 4. **The naive grounding check (spec §10.b: "no token outside the evidence packet appears in
