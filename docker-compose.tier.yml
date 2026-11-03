@@ -8,7 +8,9 @@
 #   lab            SmolLM3-3B          Apache-2.0  GitHub free edition
 #   smb            Phi-4-mini-instruct MIT         Whop Pro / Team
 #   enterprise-4b  Qwen3-4B            Apache-2.0  Enterprise (compact)
-#   enterprise-8b  Qwen3-8B            Apache-2.0  Enterprise (standard)
+#   enterprise-8b  Qwen3-8B            Apache-2.0  Enterprise (standard, superseded)
+#   enterprise-9b  Qwen3.5-9B          Apache-2.0  Enterprise (standard)
+#   enterprise-35b Qwen3.5-35B-A3B     Apache-2.0  Enterprise (benchmark, ~24 GB RAM)
 #
 # By default the port is bound to loopback only (127.0.0.1:8435), which is
 # the free-edition deployment: the product and the sidecar share one host.

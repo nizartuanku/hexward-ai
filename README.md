@@ -17,7 +17,7 @@ this sidecar uses and why one alone is not enough.
 ## Status
 
 **v0.2.0: all four tiers are verified end to end on real hardware.** That means the free
-(SmolLM3-3B), Pro/Team (Phi-4-mini-instruct) and Enterprise (Qwen3-4B / Qwen3-8B) profiles, in
+(SmolLM3-3B), Pro/Team (Phi-4-mini-instruct) and Enterprise (Qwen3-4B / Qwen3.5-9B / Qwen3.5-35B-A3B) profiles, in
 English and in Bahasa Indonesia. See `docs/TIERS.md` for the measured timings and the raw output.
 RuleHawk is the first product with the Explain button in its dashboard. The rest of the
 Hexward line is being wired in through the generic `hexward.explain_finding` feature.
@@ -99,7 +99,8 @@ Full instructions, including a fully offline path with your own pre-downloaded m
 |---|---|---|---|---|
 | `lab` | GitHub free | SmolLM3-3B | Apache-2.0 | Same host as the product, loopback only |
 | `smb` | Whop Pro / Team | Phi-4-mini-instruct | MIT | Same host, or one dedicated AI host with an API key |
-| `enterprise-4b` / `enterprise-8b` | Enterprise | Qwen3-4B / Qwen3-8B | Apache-2.0 | Dedicated AI host |
+| `enterprise-4b` / `enterprise-9b` | Enterprise | Qwen3-4B / Qwen3.5-9B | Apache-2.0 | Dedicated AI host |
+| `enterprise-35b` | Enterprise (benchmark) | Qwen3.5-35B-A3B | Apache-2.0 | Dedicated AI host, ≥24 GB free RAM |
 | BYO | Enterprise | Your OpenAI-compatible endpoint | yours | Your infrastructure |
 
 Every profile pins its source commit, file size and SHA-256 (`profiles/*.env`), and
@@ -118,11 +119,12 @@ Approximate, CPU-only, additional to the product's own footprint:
 |---|---|---|
 | SmolLM3-3B (lab) | +2-3 GB | Fine on a modest lab VM |
 | Phi-4-mini-instruct (SMB) | +4 GB | +2 vCPU recommended |
-| Qwen3 4B/8B (Enterprise) | +6-12 GB | Larger context, slower per-request on CPU |
+| Qwen3-4B / Qwen3.5-9B (Enterprise) | +6-12 GB | Larger context, slower per-request on CPU |
+| Qwen3.5-35B-A3B (Enterprise benchmark) | +24 GB | Memory-mapped 22 GB file; ~3B active parameters, so generation is faster than 8B/9B on the same CPU |
 
 The RAM figures above are approximations. Response times *were* measured, on a CPU-only VM,
 and are published with the raw outputs in `docs/TIERS.md`. On that VM one explanation took
-13–27 s for 3–4B models and about 50 s for Qwen3-8B.
+13–27 s for 3–4B models, 30–57 s for the 8B/9B models and 29–42 s for Qwen3.5-35B-A3B.
 
 ## `internal/aiclient`
 
@@ -148,7 +150,7 @@ The Go client every pilot product copies into its own repo:
 - `NormalizeLanguage`, plus an explicit language instruction at the end of both the system
   prompt and the user turn. Small models ignore a bare `"language"` field. This was measured,
   and it is why the instruction is there.
-- `WithAPIKey` for a dedicated AI host or a BYO endpoint. `WithDisableThinking` for Qwen3.
+- `WithAPIKey` for a dedicated AI host or a BYO endpoint. `WithDisableThinking` for Qwen3 and Qwen3.5.
 
 Tested with `go test -race ./...` against an `httptest` mock server (no live model needed) —
 see `internal/aiclient/client_test.go` for the full list of covered cases (happy path,

@@ -9,15 +9,18 @@ rules. Only the weights and where the sidecar runs are different.
 | `lab` | GitHub free | SmolLM3-3B | Apache-2.0 | 1.9 GB | Same host as the product, loopback only |
 | `smb` | Whop Pro / Team | Phi-4-mini-instruct | MIT | 2.5 GB | Same host, or one dedicated AI host serving several products (API key required) |
 | `enterprise-4b` | Enterprise | Qwen3-4B | Apache-2.0 | 2.5 GB | Dedicated AI host |
-| `enterprise-8b` | Enterprise | Qwen3-8B | Apache-2.0 | 5.0 GB | Dedicated AI host |
+| `enterprise-8b` | Enterprise | Qwen3-8B | Apache-2.0 | 5.0 GB | Dedicated AI host (superseded by `enterprise-9b`; kept for existing installs) |
+| `enterprise-9b` | Enterprise | Qwen3.5-9B | Apache-2.0 | 5.7 GB | Dedicated AI host |
+| `enterprise-35b` | Enterprise (benchmark) | Qwen3.5-35B-A3B (MoE, ~3B active) | Apache-2.0 | 22.0 GB | Dedicated AI host with ≥24 GB free RAM |
 | BYO | Enterprise | Your own OpenAI-compatible endpoint | yours | — | Your infrastructure |
 
 Each profile in `profiles/*.env` pins the Hugging Face repository, the exact commit, the file
 name, its size in bytes and its SHA-256. `scripts/fetch-model.sh <profile>` downloads that exact
 file, checks both the size and the hash, and deletes it if either one does not match.
 
-**Where the weights come from.** SmolLM3 comes from `ggml-org`, and Qwen3 comes from Qwen's own
-official GGUF repositories. Microsoft does not publish an official GGUF build of
+**Where the weights come from.** SmolLM3 comes from `ggml-org`, Qwen3 comes from Qwen's own
+official GGUF repositories, and the Qwen3.5 profiles come from `unsloth`'s GGUF conversions of
+Qwen's Apache-2.0 weights (Qwen does not publish official Qwen3.5 GGUF files). Microsoft does not publish an official GGUF build of
 Phi-4-mini-instruct. The `smb` profile therefore uses Unsloth's quantization of Microsoft's
 MIT-licensed weights, pinned to one commit and verified by hash. If your policy requires
 first-party artifacts only, convert the upstream `microsoft/Phi-4-mini-instruct` weights
@@ -100,3 +103,23 @@ settings on.
 These timings are for sidecars sharing one CPU. A dedicated host, or a GPU build of llama.cpp,
 is much faster. Products show a visible "explaining…" state, and nothing in a product waits on
 the AI.
+
+## Benchmark tier — measured on 2026-11-03
+
+`enterprise-35b` (Qwen3.5-35B-A3B) is the reference model for the Hexward line: it is the model
+every product's Explain output is judged against. `enterprise-9b` (Qwen3.5-9B) is the standard
+Enterprise choice at the old 8B footprint. Both were run on the same CPU-only host as the table
+above (32 vCPU, 16 threads, no GPU) through the product's own prompt and grammar, with four trap
+cases added: an instruction planted inside the evidence, a severity the engine did not give, a
+number the model is tempted to convert, and a CVE that does not exist.
+
+| Profile | Explain (typical) | Generation | Trap cases |
+|---|---|---|---|
+| enterprise-8b (Qwen3-8B) | 30–38 s | 7.5 tok/s | Failed 2 of 4: obeyed the planted instruction, restated an `info` finding as "low-severity" |
+| enterprise-9b (Qwen3.5-9B) | 42–57 s | 6.3 tok/s | Passed 4 of 4 |
+| enterprise-35b (Qwen3.5-35B-A3B) | 29–42 s | 9.0 tok/s | Passed 4 of 4 |
+
+Full outputs: `verification/2026-11-03-qwen35-benchmark.md`. Because the 8B model obeyed the
+planted instruction, the client gained two model-independent guards in the same change: evidence
+strings that read as instructions are replaced before they reach any model, and an answer that
+only asserts a status or severity change is rejected (`ErrRejected`) instead of shown.

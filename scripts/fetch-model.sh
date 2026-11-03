@@ -4,7 +4,7 @@
 # exact Hugging Face commit, and refuse to keep it unless its size and
 # SHA-256 match the values in profiles/<tier>.env.
 #
-# Usage:  scripts/fetch-model.sh <lab|smb|enterprise-4b|enterprise-8b> [dest-dir]
+# Usage:  scripts/fetch-model.sh <lab|smb|enterprise-4b|enterprise-8b|enterprise-9b|enterprise-35b> [dest-dir]
 #         (dest-dir defaults to ./models)
 #
 # This is the only network step in the whole AI Assist path, and it runs

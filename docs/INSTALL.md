@@ -93,6 +93,8 @@ go test -race ./...
 | `lab` (GitHub free) | SmolLM3-3B | Apache-2.0 | `ggml-org/SmolLM3-3B-GGUF`, pinned commit + SHA-256 in `profiles/lab.env` |
 | `smb` (Pro/Team) | Phi-4-mini-instruct | MIT | `unsloth/Phi-4-mini-instruct-GGUF` (Microsoft publishes no official GGUF), pinned in `profiles/smb.env` |
 | `enterprise-4b` / `-8b` | Qwen3-4B / 8B | Apache-2.0 | Official `Qwen/Qwen3-*-GGUF`, pinned in `profiles/enterprise-*.env` |
+| `enterprise-9b` / `-35b` | Qwen3.5-9B / Qwen3.5-35B-A3B | Apache-2.0 | `unsloth/Qwen3.5-*-GGUF` conversions of Qwen's weights, pinned in `profiles/enterprise-*.env`; `-35b` needs ≥24 GB free RAM |
+| `enterprise-9b` / `-35b` | Qwen3.5-9B / Qwen3.5-35B-A3B | Apache-2.0 | `unsloth/Qwen3.5-*-GGUF` conversions of Qwen's weights, pinned in `profiles/enterprise-*.env`; `-35b` needs ≥24 GB free RAM |
 | BYO | your model | yours | Point `internal/aiclient` at your own OpenAI-compatible endpoint |
 
 `scripts/fetch-model.sh <profile>` downloads and verifies any of them, and
