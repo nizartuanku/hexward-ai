@@ -59,7 +59,7 @@ docker run -d \
   --name hexward-ai \
   -p 127.0.0.1:8435:8435 \
   -v /path/on/host/model.gguf:/models/model.gguf:ro \
-  hexward/hexward-ai:0.2.4
+  hexward/hexward-ai:0.2.5
 ```
 
 Verify the checksum of whatever `.gguf` file you downloaded against the value the model's own
