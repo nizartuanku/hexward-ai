@@ -17,7 +17,7 @@ DevNet VM (Go 1.27, Docker 29.8) at the commit this file ships with.
 ```bash
 git clone https://github.com/nizartuanku/hexward-ai.git
 cd hexward-ai
-docker build -t hexward/hexward-ai:0.2.4 -f docker/Dockerfile .
+docker build -t hexward/hexward-ai:0.2.5 -f docker/Dockerfile .
 ```
 
 The base image is `ghcr.io/ggml-org/llama.cpp:server`, the llama.cpp project's own published

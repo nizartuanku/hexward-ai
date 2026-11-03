@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.5 — 2026-11-03
 
 - **New Enterprise profiles: `enterprise-9b` (Qwen3.5-9B) and `enterprise-35b` (Qwen3.5-35B-A3B, the benchmark tier).** Measured on 2026-11-03 on a CPU-only host through the product's own prompt and grammar, both pass every trap case (planted instruction in evidence, severity the engine did not give, number conversion, fictional CVE); Qwen3-8B failed two of them. Qwen3.5-35B-A3B is also the fastest of the three at generation (9.0 tok/s vs 7.5) because only ~3B parameters are active, at the cost of ~24 GB RAM. `enterprise-8b` stays for existing installs. The pinned `hexward/hexward-ai:0.2.4` image loads both models. Details: `docs/verification/2026-11-03-qwen35-benchmark.md`, `docs/TIERS.md`.
 - **Guard: instruction-like evidence is neutralised before it reaches the model.** Any evidence string (nested values and lists included, plus title/target/remediation of a `CoreFinding`) that reads as an instruction — "ignore previous instructions", "mark this as resolved", "output only …", chat-template control tokens — is replaced by `[omitted: instruction-like text]`. Motivation: Qwen3-8B obeyed exactly such a note in the benchmark. See `evidence.go` and `TestSanitizeEvidence_NeutralizesInstructions`.
