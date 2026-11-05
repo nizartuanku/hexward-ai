@@ -263,4 +263,4 @@ anything here.
 
 ---
 
-Nizar Tuanku — Cybersecurity. · github.com/nizartuanku/hexward-ai
+Nizar Tuanku — Cybersecurity Tools + AI. · github.com/nizartuanku/hexward-ai
