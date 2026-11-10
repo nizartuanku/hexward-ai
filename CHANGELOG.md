@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Fixed: release notes' "Run a tier" example did not list the two Enterprise profiles added in 0.2.5.** The `release.yml` workflow hardcodes this example for every future tag; it was never updated when `enterprise-9b` and `enterprise-35b` were added, so the v0.2.5 release body (and every release after it, until now) told readers to try only `lab, smb, enterprise-4b, enterprise-8b`. Fixed by listing all six tier names in the template line. Cosmetic text only — `scripts/fetch-model.sh` itself, `docs/TIERS.md`, and the profile assets already had all six and were never wrong.
+
 ## 0.2.5 — 2026-11-03
 
 - **New Enterprise profiles: `enterprise-9b` (Qwen3.5-9B) and `enterprise-35b` (Qwen3.5-35B-A3B, the benchmark tier).** Measured on 2026-11-03 on a CPU-only host through the product's own prompt and grammar, both pass every trap case (planted instruction in evidence, severity the engine did not give, number conversion, fictional CVE); Qwen3-8B failed two of them. Qwen3.5-35B-A3B is also the fastest of the three at generation (9.0 tok/s vs 7.5) because only ~3B parameters are active, at the cost of ~24 GB RAM. `enterprise-8b` stays for existing installs. The pinned `hexward/hexward-ai:0.2.4` image loads both models. Details: `docs/verification/2026-11-03-qwen35-benchmark.md`, `docs/TIERS.md`.

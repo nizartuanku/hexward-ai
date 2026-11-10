@@ -39,7 +39,7 @@ jobs:
             echo
             echo '```sh'
             echo "git clone --depth 1 -b ${GITHUB_REF_NAME} https://github.com/${GITHUB_REPOSITORY}.git && cd hexward-ai"
-            echo "scripts/fetch-model.sh lab          # or smb, enterprise-4b, enterprise-8b"
+            echo "scripts/fetch-model.sh lab          # or smb, enterprise-4b, enterprise-8b, enterprise-9b, enterprise-35b"
             echo "docker compose --env-file profiles/lab.env -f docker-compose.tier.yml up -d"
             echo '```'
             echo
