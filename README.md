@@ -254,6 +254,10 @@ Named honestly so the next session (or the next engineer) does not have to redis
    human, not checked by a script, for whether it stayed grounded — building that check is part
    of the CI gate work in point 2.
 
+## Where to get the products
+
+AI Assist runs inside the Hexward tools (RuleHawk, AuditLight, Loglight and the rest of the line). Each tool's source is on [GitHub](https://github.com/nizartuanku); Pro and Team licences, with AI Assist switched on, are on [Whop](https://whop.com/nizar-tuanku/?utm_source=github&utm_medium=readme&utm_campaign=hexward-ai).
+
 ## Licensing
 
 Apache-2.0 (see `LICENSE`) — this repository has one edition, always free, the same as every
